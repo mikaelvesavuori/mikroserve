@@ -212,10 +212,10 @@ All of the settings already presented in the above examples can be provided in m
 | --cert       | `<string>`                  | sslCert                     |                      |
 | --key        | `<string>`                  | sslKey                      |                      |
 | --ca         | `<string>`                  | sslCa                       |                      |
-| --debug      | none (is flag)              | debug                       | DEBUG                |
 | --ratelimit  | none (is flag)              | rateLimit.enabled           |                      |
 | --rps        | `<number>`                  | rateLimit.requestsPerMinute |                      |
 | --allowed    | `<comma-separated strings>` | allowedDomains              |                      |
+| --debug      | none (is flag)              | debug                       | DEBUG                |
 
 ### Order of application
 
