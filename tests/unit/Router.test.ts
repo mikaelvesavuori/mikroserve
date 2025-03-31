@@ -13,7 +13,6 @@ describe('Router', () => {
   beforeEach(() => {
     router = new Router();
 
-    // Mock request object
     mockReq = {
       method: 'GET',
       url: '/test',
@@ -23,7 +22,6 @@ describe('Router', () => {
       on: vi.fn()
     };
 
-    // Mock response object
     mockRes = {
       setHeader: vi.fn(),
       getHeader: vi.fn(),
@@ -196,7 +194,6 @@ describe('Router', () => {
       router.get('/method-test', getHandler);
       router.post('/method-test', postHandler);
 
-      // Test GET request
       mockReq.method = 'GET';
       mockReq.url = '/method-test';
       await router.handle(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
@@ -204,11 +201,9 @@ describe('Router', () => {
       expect(getHandler).toHaveBeenCalled();
       expect(postHandler).not.toHaveBeenCalled();
 
-      // Reset mocks
       getHandler.mockClear();
       postHandler.mockClear();
 
-      // Test POST request
       mockReq.method = 'POST';
       mockReq.url = '/method-test';
       await router.handle(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
@@ -222,7 +217,6 @@ describe('Router', () => {
     let context: Context;
 
     beforeEach(() => {
-      // Create handler that saves and returns the context
       router.get('/helpers-test', (ctx: any) => {
         context = ctx;
         return ctx.json({ success: true });
@@ -474,7 +468,6 @@ describe('Router', () => {
         .mockReturnValue({ statusCode: 200, body: { route: 'specific' } });
       const paramHandler = vi.fn().mockReturnValue({ statusCode: 200, body: { route: 'param' } });
 
-      // Order matters here - normally the first matching route would win
       router.get('/:any', paramHandler);
       router.get('/specific', specificHandler);
 

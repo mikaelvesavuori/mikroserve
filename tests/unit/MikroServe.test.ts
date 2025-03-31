@@ -554,7 +554,7 @@ describe('Body parsing', () => {
   });
 
   test('It should reject oversized request bodies', async () => {
-    const config = getTestConfig({ debug: true }); // Enable debug logging
+    const config = getTestConfig({ debug: true });
     const app = new MikroServe(config);
 
     app.post('/large', (c: any) => c.json({ success: true }));
@@ -1060,8 +1060,6 @@ describe('Response handling', () => {
   });
 });
 
-/////////////
-
 describe('HTTP/2 Support', () => {
   test('It should create an HTTP/2 server with valid certificates', async () => {
     const config = getTestConfig({
@@ -1167,7 +1165,6 @@ describe('HTTP/2 Support', () => {
     });
 
     const { url } = await createTestServer(config);
-    // Convert to HTTPS URL since HTTP/2 requires TLS
     const httpsUrl = url.replace('http://', 'https://');
 
     try {
@@ -1180,7 +1177,7 @@ describe('HTTP/2 Support', () => {
       if (error.headers) {
         expect(error.headers['strict-transport-security']).toBeTruthy();
       } else {
-        throw error; // If there are no headers, re-throw the error
+        throw error;
       }
     }
   });
@@ -1192,7 +1189,6 @@ describe('HTTP/2 Support', () => {
       sslKey: path.join(__dirname, '../test-certs/key.pem')
     });
 
-    // Create a server with custom middleware for HTTP/2
     const app = new MikroServe(config);
 
     app.use(async (c, next) => {
