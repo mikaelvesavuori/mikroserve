@@ -96,6 +96,14 @@ export class MikroServe {
   }
 
   /**
+   * @description Register a route that responds to any HTTP method.
+   */
+  public any(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+    this.router.any(path, ...handlers);
+    return this;
+  }
+
+  /**
    * @description Register an OPTIONS route.
    */
   public options(path: string, ...handlers: (RouteHandler | Middleware)[]): this {

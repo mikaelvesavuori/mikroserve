@@ -217,7 +217,7 @@ All of the settings already presented in the above examples can be provided in m
 | --allowed    | `<comma-separated strings>` | allowedDomains              |                      |
 | --debug      | none (is flag)              | debug                       | DEBUG                |
 
-### Order of application
+### Order of Application
 
 As per [MikroConf](https://github.com/mikaelvesavuori/mikroconf) behavior, the configuration sources are applied in this order:
 

@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { URLSearchParams } from 'node:url';
 
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import type { MikroServeOptions, ServerType } from '../../src/interfaces/index.js';
 
@@ -275,6 +275,171 @@ describe('Request handling', () => {
     expect(response.data).toEqual({
       message: 'PATCH success',
       body: testData
+    });
+  });
+
+  test('It should register a route that responds to any HTTP method', async () => {
+    const config = getTestConfig();
+    const app = new MikroServe(config);
+
+    app.any('/any-method', (c: any) => c.json({ method: c.req.method }));
+
+    const server = app.start();
+    activeServers.push(server);
+
+    await new Promise<void>((resolve) => {
+      if (server.listening) resolve();
+      else server.on('listening', () => resolve());
+    });
+
+    const url = getServerUrl(server);
+
+    const getResponse = await makeRequest(`${url}/any-method`);
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.data).toEqual({ method: 'GET' });
+
+    const postResponse = await makeRequest(`${url}/any-method`, { method: 'POST' });
+    expect(postResponse.status).toBe(200);
+    expect(postResponse.data).toEqual({ method: 'POST' });
+
+    const putResponse = await makeRequest(`${url}/any-method`, { method: 'PUT' });
+    expect(putResponse.status).toBe(200);
+    expect(putResponse.data).toEqual({ method: 'PUT' });
+
+    const deleteResponse = await makeRequest(`${url}/any-method`, { method: 'DELETE' });
+    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.data).toEqual({ method: 'DELETE' });
+
+    const patchResponse = await makeRequest(`${url}/any-method`, { method: 'PATCH' });
+    expect(patchResponse.status).toBe(200);
+    expect(patchResponse.data).toEqual({ method: 'PATCH' });
+  });
+
+  test('It should handle middleware with any() method', async () => {
+    const config = getTestConfig();
+    const app = new MikroServe(config);
+    const middleware = vi.fn().mockImplementation(async (c, next) => {
+      c.state = { middlewareRan: true };
+      return next();
+    });
+
+    app.any('/any-with-middleware', middleware, (c: any) =>
+      c.json({ middlewareRan: c.state?.middlewareRan, method: c.req.method })
+    );
+
+    const server = app.start();
+    activeServers.push(server);
+
+    await new Promise<void>((resolve) => {
+      if (server.listening) resolve();
+      else server.on('listening', () => resolve());
+    });
+
+    const url = getServerUrl(server);
+
+    const getResponse = await makeRequest(`${url}/any-with-middleware`);
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.data).toEqual({ middlewareRan: true, method: 'GET' });
+
+    const postResponse = await makeRequest(`${url}/any-with-middleware`, { method: 'POST' });
+    expect(postResponse.status).toBe(200);
+    expect(postResponse.data).toEqual({ middlewareRan: true, method: 'POST' });
+  });
+
+  describe('Wildcard pattern matching', () => {
+    test('It should match wildcard paths', async () => {
+      const config = getTestConfig();
+      const app = new MikroServe(config);
+
+      app.get('/wildcard/*', (c: any) =>
+        c.json({
+          wildcard: c.params.wildcard,
+          success: true
+        })
+      );
+
+      const server = app.start();
+      activeServers.push(server);
+
+      await new Promise<void>((resolve) => {
+        if (server.listening) resolve();
+        else server.on('listening', () => resolve());
+      });
+
+      const url = getServerUrl(server);
+
+      const simpleResponse = await makeRequest(`${url}/wildcard/simple`);
+      expect(simpleResponse.status).toBe(200);
+      expect(simpleResponse.data).toEqual({ wildcard: 'simple', success: true });
+
+      const nestedResponse = await makeRequest(`${url}/wildcard/nested/path/test`);
+      expect(nestedResponse.status).toBe(200);
+      expect(nestedResponse.data).toEqual({ wildcard: 'nested/path/test', success: true });
+
+      const queryResponse = await makeRequest(`${url}/wildcard/query?param=value`);
+      expect(queryResponse.status).toBe(200);
+      expect(queryResponse.data).toEqual({ wildcard: 'query', success: true });
+    });
+
+    test('It should match exact root of wildcard path', async () => {
+      const config = getTestConfig();
+      const app = new MikroServe(config);
+
+      app.get('/api/*', (c: any) =>
+        c.json({
+          wildcard: c.params.wildcard || 'root',
+          success: true
+        })
+      );
+
+      const server = app.start();
+      activeServers.push(server);
+
+      await new Promise<void>((resolve) => {
+        if (server.listening) resolve();
+        else server.on('listening', () => resolve());
+      });
+
+      const url = getServerUrl(server);
+
+      const rootResponse = await makeRequest(`${url}/api/`);
+      expect(rootResponse.status).toBe(200);
+      expect(rootResponse.data).toEqual({ wildcard: 'root', success: true });
+
+      const exactResponse = await makeRequest(`${url}/api`);
+      expect(exactResponse.status).toBe(200);
+      expect(exactResponse.data).toEqual({ wildcard: 'root', success: true });
+    });
+
+    test('It should support parameters and wildcard in the same path', async () => {
+      const config = getTestConfig();
+      const app = new MikroServe(config);
+
+      app.get('/users/:userId/files/*', (c: any) =>
+        c.json({
+          userId: c.params.userId,
+          filePath: c.params.wildcard,
+          success: true
+        })
+      );
+
+      const server = app.start();
+      activeServers.push(server);
+
+      await new Promise<void>((resolve) => {
+        if (server.listening) resolve();
+        else server.on('listening', () => resolve());
+      });
+
+      const url = getServerUrl(server);
+
+      const response = await makeRequest(`${url}/users/123/files/documents/report.pdf`);
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual({
+        userId: '123',
+        filePath: 'documents/report.pdf',
+        success: true
+      });
     });
   });
 
@@ -1126,8 +1291,6 @@ describe('HTTP/2 Support', () => {
       method: 'GET',
       rejectUnauthorized: false
     });
-
-    console.log('response', response);
 
     expect(response.status).toBe(200);
     expect(response.data).toEqual({ message: 'GET success' });

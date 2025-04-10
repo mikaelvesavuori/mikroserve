@@ -115,6 +115,47 @@ describe('Router', () => {
       expect(result).toEqual({ statusCode: 200, body: { success: true } });
     });
 
+    describe('Any method', () => {
+      test('It should register a route that responds to any HTTP method', async () => {
+        const handler = vi.fn().mockReturnValue({ statusCode: 200, body: { success: true } });
+        router.any('/any-method', handler);
+
+        const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
+
+        for (const method of methods) {
+          mockReq.method = method;
+          mockReq.url = '/any-method';
+
+          await router.handle(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+
+          expect(handler).toHaveBeenCalled();
+          handler.mockClear();
+        }
+      });
+
+      test('It should execute middleware with any() method', async () => {
+        const middleware = vi.fn().mockImplementation((_ctx, next) => next());
+        const handler = vi.fn().mockReturnValue({ statusCode: 200, body: { success: true } });
+
+        router.any('/any-with-middleware', middleware, handler);
+
+        const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
+
+        for (const method of methods) {
+          mockReq.method = method;
+          mockReq.url = '/any-with-middleware';
+
+          await router.handle(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+
+          expect(middleware).toHaveBeenCalled();
+          expect(handler).toHaveBeenCalled();
+
+          middleware.mockClear();
+          handler.mockClear();
+        }
+      });
+    });
+
     test('It should return null when no route matches', async () => {
       const handler = vi.fn().mockReturnValue({ statusCode: 200, body: { success: true } });
       router.get('/other-path', handler);
@@ -210,6 +251,49 @@ describe('Router', () => {
 
       expect(getHandler).not.toHaveBeenCalled();
       expect(postHandler).toHaveBeenCalled();
+    });
+
+    describe('Wildcard pattern matching', () => {
+      test('It should match wildcard paths', async () => {
+        const handler = vi.fn().mockReturnValue({ statusCode: 200, body: { success: true } });
+        router.get('/api/files/*', handler);
+
+        mockReq.url = '/api/files/documents/report.pdf';
+        await router.handle(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+
+        expect(handler).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: { wildcard: 'documents/report.pdf' },
+            path: '/api/files/documents/report.pdf'
+          })
+        );
+      });
+
+      test('It should match the exact wildcard path', async () => {
+        const handler = vi.fn().mockReturnValue({ statusCode: 200, body: { success: true } });
+        router.get('/api/resources/*', handler);
+
+        mockReq.url = '/api/resources/';
+        await router.handle(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+
+        expect(handler).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: { wildcard: '' },
+            path: '/api/resources/'
+          })
+        );
+
+        // Also test without trailing slash
+        mockReq.url = '/api/resources';
+        await router.handle(mockReq as http.IncomingMessage, mockRes as http.ServerResponse);
+
+        expect(handler).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: { wildcard: '' },
+            path: '/api/resources'
+          })
+        );
+      });
     });
   });
 

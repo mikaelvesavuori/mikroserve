@@ -13,7 +13,7 @@ import type {
 } from './interfaces/index.js';
 
 /**
- * Router class to manage routes and middleware
+ * @description Router class to manage routes and middleware.
  */
 export class Router {
   private routes: Route[] = [];
@@ -21,79 +21,85 @@ export class Router {
   private pathPatterns: Map<string, PathPattern> = new Map();
 
   /**
-   * Add a global middleware
+   * @description Add a global middleware.
    */
-  use(middleware: Middleware): this {
+  public use(middleware: Middleware): this {
     this.globalMiddlewares.push(middleware);
     return this;
   }
 
   /**
-   * Register a route with specified method
+   * @description Register a GET route.
    */
-  private register(
-    method: string,
-    path: string,
-    handler: RouteHandler,
-    middlewares: Middleware[] = []
-  ): this {
-    this.routes.push({ method, path, handler, middlewares });
-    this.pathPatterns.set(path, this.createPathPattern(path));
-    return this;
-  }
-
-  /**
-   * Register a GET route
-   */
-  get(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+  public get(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
     const handler = handlers.pop() as RouteHandler;
     return this.register('GET', path, handler, handlers as Middleware[]);
   }
 
   /**
-   * Register a POST route
+   * @description Register a POST route.
    */
-  post(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+  public post(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
     const handler = handlers.pop() as RouteHandler;
     return this.register('POST', path, handler, handlers as Middleware[]);
   }
 
   /**
-   * Register a PUT route
+   * @description Register a PUT route.
    */
-  put(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+  public put(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
     const handler = handlers.pop() as RouteHandler;
     return this.register('PUT', path, handler, handlers as Middleware[]);
   }
 
   /**
-   * Register a DELETE route
+   * @description Register a DELETE route.
    */
-  delete(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+  public delete(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
     const handler = handlers.pop() as RouteHandler;
     return this.register('DELETE', path, handler, handlers as Middleware[]);
   }
 
   /**
-   * Register a PATCH route
+   * @description Register a PATCH route.
    */
-  patch(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+  public patch(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
     const handler = handlers.pop() as RouteHandler;
     return this.register('PATCH', path, handler, handlers as Middleware[]);
   }
 
   /**
-   * Register an OPTIONS route
+   * @description Register a route for any HTTP method.
    */
-  options(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+  public any(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
+    const handler = handlers.pop() as RouteHandler;
+    const middlewares = handlers as Middleware[];
+
+    this.register('GET', path, handler, middlewares);
+    this.register('POST', path, handler, middlewares);
+    this.register('PUT', path, handler, middlewares);
+    this.register('DELETE', path, handler, middlewares);
+    this.register('PATCH', path, handler, middlewares);
+    this.register('OPTIONS', path, handler, middlewares);
+
+    return this;
+  }
+
+  /**
+   * @description Register an OPTIONS route.
+   */
+  public options(path: string, ...handlers: (RouteHandler | Middleware)[]): this {
     const handler = handlers.pop() as RouteHandler;
     return this.register('OPTIONS', path, handler, handlers as Middleware[]);
   }
 
   /**
-   * Match a request to a route
+   * @description Match a request to a route.
    */
-  match(method: string, path: string): { route: Route; params: Record<string, string> } | null {
+  public match(
+    method: string,
+    path: string
+  ): { route: Route; params: Record<string, string> } | null {
     for (const route of this.routes) {
       if (route.method !== method) continue;
 
@@ -115,31 +121,9 @@ export class Router {
   }
 
   /**
-   * Create a regex pattern for path matching
+   * @description Handle a request and find the matching route.
    */
-  private createPathPattern(path: string): PathPattern {
-    const paramNames: string[] = [];
-
-    // Convert path to regex pattern
-    const pattern = path
-      .replace(/\/:[^/]+/g, (match) => {
-        const paramName = match.slice(2);
-        paramNames.push(paramName);
-        return '/([^/]+)';
-      })
-      // Handle optional trailing slash
-      .replace(/\/$/, '/?');
-
-    return {
-      pattern: new RegExp(`^${pattern}$`),
-      paramNames
-    };
-  }
-
-  /**
-   * Handle a request and find the matching route
-   */
-  async handle(req: RequestType, res: ResponseType): Promise<HandlerResponse | null> {
+  public async handle(req: RequestType, res: ResponseType): Promise<HandlerResponse | null> {
     const method = req.method || 'GET';
     const url = new URL(req.url || '/', `http://${req.headers.host}`);
     const path = url.pathname;
@@ -150,7 +134,6 @@ export class Router {
 
     const { route, params } = matched;
 
-    // Parse query parameters
     const query: Record<string, string> = {};
     url.searchParams.forEach((value, key) => {
       query[key] = value;
@@ -165,7 +148,7 @@ export class Router {
       body: req.body || {},
       headers: req.headers,
       path,
-      state: {}, // Add the missing state property
+      state: {},
       raw: () => res,
       binary: (content: Buffer, contentType = 'application/octet-stream', status = 200) => ({
         statusCode: status,
@@ -229,7 +212,6 @@ export class Router {
             headers: { 'Content-Type': 'text/html' }
           }),
           form: (content) => ({
-            // Make sure form method is included here
             statusCode: code,
             body: content,
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -252,7 +234,44 @@ export class Router {
   }
 
   /**
-   * Execute middleware chain and final handler
+   * @description Register a route with specified method.
+   */
+  private register(
+    method: string,
+    path: string,
+    handler: RouteHandler,
+    middlewares: Middleware[] = []
+  ): this {
+    this.routes.push({ method, path, handler, middlewares });
+    this.pathPatterns.set(path, this.createPathPattern(path));
+    return this;
+  }
+
+  /**
+   * @description Create a regex pattern for path matching.
+   */
+  private createPathPattern(path: string): PathPattern {
+    const paramNames: string[] = [];
+
+    let pattern = path.replace(/\/:[^/]+/g, (match) => {
+      const paramName = match.slice(2);
+      paramNames.push(paramName);
+      return '/([^/]+)';
+    });
+
+    if (pattern.endsWith('/*')) {
+      pattern = `${pattern.slice(0, -2)}(?:/(.*))?`;
+      paramNames.push('wildcard');
+    } else pattern = pattern.replace(/\/$/, '/?');
+
+    return {
+      pattern: new RegExp(`^${pattern}$`),
+      paramNames
+    };
+  }
+
+  /**
+   * @description Execute middleware chain and final handler.
    */
   private async executeMiddlewareChain(
     context: Context,
